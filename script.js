@@ -1,23 +1,43 @@
-document.addEventListener('DOMContentLoaded', function() {
-  // Function to get the value of a cookie by name
-  function getCookie(name) {
-    let cookieArray = document.cookie.split('; ');
-    let cookie = cookieArray.find((row) => row.startsWith(name + '='));
-    return cookie ? cookie.split('=')[1] : null;
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key'; 
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '12345678901234567890123456789012'; 
+const IV = process.env.IV || '1234567890123456'; 
+
+const encrypt = (payload) => {
+  try {
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), IV);
+    let encrypted = cipher.update(token, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+
+    console.log('✅ Token Encrypted Successfully');
+    return encrypted;
+  } catch (error) {
+    console.error('❌ Encryption Error:', error);
+    return null;
   }
+};
 
-  // Function to set a cookie
-  function setCookie(name, value, daysToExpire) {
-    let date = new Date();
-    date.setTime(date.getTime() + daysToExpire * 24 * 60 * 60 * 1000);
-    document.cookie =
-      name + '=' + value + ';expires=' + date.toUTCString() + ';path=/';
+const decrypt = (encryptedToken) => {
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), IV);
+    let decrypted = decipher.update(encryptedToken, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    const decoded = jwt.verify(decrypted, JWT_SECRET);
+
+    console.log('✅ Token Decrypted & Verified Successfully');
+    return decoded;
+  } catch (error) {
+    console.error('❌ Decryption or Verification Error:', error);
+    return null;
   }
+};
 
-  // 1. Get the value of the 'count' cookie
-  // 2. If the cookie exists, increment the value and update the cookie
-  // 3. If the cookie does not exist, create it and set the value to 1
-  // 4. Display the count on the webpage
-
-  // your code here
-});
+module.exports = {
+  encrypt,
+  decrypt
+};
